@@ -1,0 +1,38 @@
+// WARNING: THIS PROMPT SPAWNS MULTIPLE PARALLEL AGENTS AND CAN USE YOUR CLAUDE BUDGET VERY QUICKLY
+// Reduce {numLocations} and {maxTokensPerAgent}, or change {thinkingAgent} to a cheaper model to control costs.
+// FLOW: validate → locations → template → QA template → research batches → final QA → done
+
+REMEMBER THESE CONSTANTS:
+
+{region} = United Kingdom
+{numLocations} = 20
+{maxAgents} = 10
+{thinkingAgent} = Opus
+{maxTokensPerAgent} = 100000 (budget guideline, not enforced)
+{minFileSize} = 10000 (minimum characters for valid research file)
+{specialistSubject} = 'Marketing, advertising, web design and SEO agencies between 2 and 50 staff up to £10M Annual turnover. Research their markets, client industries, awards and what makes them unique and/or successful.'
+{workingDirectory} = current working directory (use absolute paths for all file operations)
+
+// DO NOT EDIT BELOW THIS LINE
+
+0) PRE-FLIGHT CHECK: Before proceeding, validate that all constants above are sensible (e.g., {numLocations} > 0, {maxAgents} > 0, {region} is a valid geographic region, {specialistSubject} is non-empty). If any constant is invalid or nonsensical, stop immediately and report the error.
+
+You may have a fresh directory OR be resuming a previous run. Everything you need is in this prompt. Use today's date for all research.
+
+You are an expert project manager, research planning agent and agent orchestrator. Follow these instructions headlessly (do not wait for or expect user responses between steps) systematically and carefully. IMPORTANT: Do NOT use AskUserQuestion - make reasonable assumptions and proceed. Instruct all sub-agents to do the same. Start by creating a todo:
+
+1) Create the file research.md if it does not already exist. Read the document if it already exists. RESUME LOGIC: If research.md already contains locations, count how many are marked "(done)" - step 6 will skip these and only research remaining locations. If all {numLocations} are "(done)", skip to step 8. Format each location line as: "{number}. {Location Name}"
+
+2) If research.md already contains {numLocations} or more location entries, skip this step. Otherwise, dispatch an agent to research the largest population centres in {region} by population (descending). TIP: Wikipedia blocks default bot User-Agents but works with curl using a browser User-Agent, e.g.: curl -s -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" "https://en.wikipedia.org/wiki/List_of_cities_in_the_United_Kingdom". The agent may also use other authoritative sources (population databases, government statistics, etc.). The agent will add locations to research.md until it contains {numLocations} entries total, in descending population order, using the format from step 1. Verify research.md contains {numLocations} entries - re-dispatch if required (max 3 retries).
+
+3) Divide {numLocations} by {maxAgents}, round up to the nearest integer. This is {numRuns}. Remember this variable.
+
+4) If report-template-checked.md already exists, skip to step 6. If report-template.md exists (but not checked), skip to step 5. Otherwise, dispatch a single EXPERT WEB RESEARCH AGENT using {thinkingAgent} to research {specialistSubject}. THIS STEP IS CRITICAL - the quality of all subsequent research depends on this template. Give the agent a HIGHLY DESCRIPTIVE, COMPREHENSIVE prompt that explains exactly what meta-information, taxonomy, categories, metrics, and data points should be captured for {specialistSubject}. Their task is to find META and TAXONOMY INFORMATION about this subject and return a COMPREHENSIVE REPORT FORMAT that other agents can use when reporting on {specialistSubject} IN {Location} - for example a "Restaurants" query would list restaurants, reviews, chefs, ingredients, famous dishes etc, whereas a "Heavy Industries" query would list industries present, companies for each, skill & workforce factors, supply-chain factors, famous plants etc. The template MUST include sections for capturing: contact details (websites, emails, phone), social profiles (LinkedIn, etc.), reviews/ratings, pricing where available, and references from trusted sources. The agent will save the report template as report-template.md. Verify report-template.md exists - re-dispatch if required (max 3 retries).
+
+5) If report-template-checked.md already exists, skip to step 6. Otherwise, dispatch a QA AGENT using {thinkingAgent} to review and POLISH the report-template.md. This agent should read the template, identify any gaps, missing sections, or areas that could be more comprehensive, and make amendments. The template is the foundation for all research - it must be thorough and capture every relevant dimension of {specialistSubject}. After QA completes, rename report-template.md to report-template-checked.md to mark it as validated.
+
+6) Foreach {numRuns}: Assign the next {maxAgents} uncompleted locations (those NOT marked "(done)" in research.md) to agents (possibly fewer for the final run). Dispatch IN PARALLEL using a single message containing multiple Task tool calls - do NOT dispatch sequentially. These are EXPERT WEB RESEARCH AGENTS using {thinkingAgent}. Pass each agent the full path to report-template-checked.md and instruct them to follow its structure. They must use multiple COMPREHENSIVE WEB SEARCHES (max {maxTokensPerAgent} / 2) to research the Location in general (demographics, population profile, housing, infrastructure, industry, transport, regional economic and business factors, market preferences and local interesting facts, people and trivia) plus ADDITIONAL DETAILED WEB RESEARCH (max {maxTokensPerAgent} / 2) on "{specialistSubject} in Location". Instruct agents to find AS MANY relevant entries AS POSSIBLE within their context limits - prioritise comprehensive coverage over arbitrary minimums. For any people discovered, capture their LinkedIn profile URL and business email address wherever possible. For any companies/businesses discovered, capture their contact information including website URL, LinkedIn profile URL, reviews, pricing information and any references from trusted sources like major blogs or news outlets. Do NOT use AskUserQuestion - make reasonable assumptions and proceed. IMPORTANT: Each agent MUST record ALL sources as full URLs in a comprehensive Sources section. Each agent writes to {location-slug}.md (slugified: lowercase, hyphens for spaces, remove apostrophes and special characters, transliterate non-ASCII, e.g., "newcastle-upon-tyne.md", "sao-paulo.md").
+
+7) After each run, validate that each {location-slug}.md file exists AND contains at least {minFileSize} characters. Update research.md: "{number}. {Location Name} (done)" for success. Do NOT retry at this stage - continue to next run.
+
+8) Dispatch a single QA AGENT using {thinkingAgent} to validate all research files. The agent should: (a) check for {location-slug}.md files matching each location in research.md, verify they exist and meet {minFileSize} minimum, (b) spot-check 3 random files for quality, consistency with report-template-checked.md structure, source URL presence, and comprehensive coverage of {specialistSubject}. The agent MUST return in its response: a list of any missing/undersized files and any quality issues found. Based on the QA agent's response, re-dispatch affected location agents in parallel (max 3 retry attempts total across all retries). Update research.md with "(done)" or "(failed)" for each location. When all locations pass or max retries exhausted, append "## Research Complete" and timestamp to research.md. After appending completion marker, perform no further actions.
