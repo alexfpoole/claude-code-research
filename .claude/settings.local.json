@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch",
+      "WebSearch",
+      "Write",
+      "Edit",
+      "Read",
+      "Glob",
+      "Bash(mv:*)",
+      "Bash(ls:*)",
+      "Bash(wc:*)",
+      "Bash(curl:*)",
+      "Task"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
